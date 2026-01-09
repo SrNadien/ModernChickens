@@ -1,4 +1,4 @@
-package com.setycz.chickens;
+package strhercules\modernchickens
 
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.tileentity.TileEntity;

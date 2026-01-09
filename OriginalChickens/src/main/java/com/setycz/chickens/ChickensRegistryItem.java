@@ -1,4 +1,4 @@
-package com.setycz.chickens;
+package strhercules\modernchickens
 
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;

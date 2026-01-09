@@ -3,7 +3,7 @@
  */
 @ParametersAreNonnullByDefault
 @MethodsReturnNonnullByDefault
-package com.setycz.chickens;
+package strhercules\modernchickens
 
 import mcp.MethodsReturnNonnullByDefault;
 

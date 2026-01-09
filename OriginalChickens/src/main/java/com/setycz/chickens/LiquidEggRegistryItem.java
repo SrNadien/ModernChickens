@@ -1,4 +1,4 @@
-package com.setycz.chickens;
+package strhercules\modernchickens
 
 import net.minecraft.block.Block;
 import net.minecraftforge.fluids.Fluid;

@@ -1,4 +1,4 @@
-package com.setycz.chickens;
+package strhercules\modernchickens
 
 import com.setycz.chickens.coloredEgg.EntityColoredEgg;
 import com.setycz.chickens.coloredEgg.ItemColoredEgg;

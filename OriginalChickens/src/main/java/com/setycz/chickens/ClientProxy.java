@@ -1,4 +1,4 @@
-package com.setycz.chickens;
+package strhercules\modernchickens
 
 import com.setycz.chickens.chicken.EntityChickensChicken;
 import com.setycz.chickens.chicken.ModelChickensChicken;

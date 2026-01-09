@@ -1,4 +1,4 @@
-package com.setycz.chickens;
+package strhercules\modernchickens
 
 /**
  * Created by setyc on 28.02.2016.

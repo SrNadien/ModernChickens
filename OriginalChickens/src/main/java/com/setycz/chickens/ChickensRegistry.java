@@ -1,4 +1,4 @@
-package com.setycz.chickens;
+package strhercules\modernchickens
 
 import net.minecraft.init.Biomes;
 import net.minecraft.world.biome.Biome;

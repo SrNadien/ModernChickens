@@ -1,4 +1,4 @@
-package com.setycz.chickens;
+package strhercules\modernchickens
 
 import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.init.Items;

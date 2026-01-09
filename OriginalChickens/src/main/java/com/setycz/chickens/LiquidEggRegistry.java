@@ -1,4 +1,4 @@
-package com.setycz.chickens;
+package strhercules\modernchickens
 
 import java.util.Collection;
 import java.util.HashMap;
