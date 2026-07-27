@@ -20,6 +20,7 @@ import com.setycz.chickens.integration.jei.category.IncubatorCategory;
 import com.setycz.chickens.integration.jei.category.HenhousingCategory;
 import com.setycz.chickens.integration.jei.category.LayingCategory;
 import com.setycz.chickens.integration.jei.category.RoostingCategory;
+import com.setycz.chickens.integration.jei.category.TeachingCategory;
 import com.setycz.chickens.integration.jei.category.ThrowingCategory;
 import com.setycz.chickens.item.ChickensSpawnEggItem;
 import com.setycz.chickens.item.ColoredEggItem;
@@ -40,6 +41,7 @@ import mezz.jei.api.registration.IRecipeCatalystRegistration;
 import mezz.jei.api.registration.IRecipeCategoryRegistration;
 import mezz.jei.api.registration.IRecipeRegistration;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
@@ -51,11 +53,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Stream;
 
-/**
- * Registers the Chickens JEI plugin so the modern port exposes the same recipe
- * guides as the original mod. All data is sourced from the live registry so
- * configuration tweaks are reflected instantly.
- */
 @JeiPlugin
 public class ChickensJeiPlugin implements IModPlugin {
     private static final ResourceLocation UID = ResourceLocation.fromNamespaceAndPath(ChickensMod.MOD_ID, "jei_plugin");
@@ -75,9 +72,7 @@ public class ChickensJeiPlugin implements IModPlugin {
             if (chicken == null) {
                 return IIngredientSubtypeInterpreter.NONE;
             }
-            ChickenStats stats = ChickenItemHelper.getStats(stack);
-            return String.format("%d/%d/%d/%d/%s", chicken.getId(), stats.gain(), stats.growth(), stats.strength(),
-                    stats.analysed());
+            return String.valueOf(chicken.getId());
         });
     }
 
@@ -96,7 +91,8 @@ public class ChickensJeiPlugin implements IModPlugin {
                 new AvianFluidConverterCategory(guiHelper),
                 new AvianChemicalConverterCategory(guiHelper),
                 new AvianDousingCategory(guiHelper),
-                new IncubatorCategory(guiHelper)
+                new IncubatorCategory(guiHelper),
+                new TeachingCategory(guiHelper)
         );
     }
 
@@ -114,6 +110,7 @@ public class ChickensJeiPlugin implements IModPlugin {
         registration.addRecipes(ChickensJeiRecipeTypes.AVIAN_CHEMICAL_CONVERTER, buildAvianChemicalConverterRecipes());
         registration.addRecipes(ChickensJeiRecipeTypes.AVIAN_DOUSING, buildAvianDousingRecipes());
         registration.addRecipes(ChickensJeiRecipeTypes.INCUBATOR, buildIncubatorRecipes());
+        registration.addRecipes(ChickensJeiRecipeTypes.TEACHING, buildTeachingRecipes());
     }
 
     @Override
@@ -135,6 +132,8 @@ public class ChickensJeiPlugin implements IModPlugin {
                 ChickensJeiRecipeTypes.AVIAN_DOUSING);
         registration.addRecipeCatalyst(new ItemStack(ModRegistry.INCUBATOR_ITEM.get()),
                 ChickensJeiRecipeTypes.INCUBATOR);
+        // El libro es el catalizador de la receta de teaching
+        registration.addRecipeCatalyst(new ItemStack(Items.BOOK), ChickensJeiRecipeTypes.TEACHING);
     }
 
     private static List<ChickensJeiRecipeTypes.LayingRecipe> buildLayingRecipes() {
@@ -149,24 +148,35 @@ public class ChickensJeiPlugin implements IModPlugin {
     }
 
     private static List<ChickensJeiRecipeTypes.DropRecipe> buildDropRecipes() {
-        return ChickensRegistry.getItems().stream()
-                .filter(ChickensRegistryItem::isEnabled)
-                .map(chicken -> new ChickensJeiRecipeTypes.DropRecipe(
-                        ChickensSpawnEggItem.createFor(chicken),
-                        chicken.createDropItem()))
-                .filter(drop -> !drop.drop().isEmpty())
-                .toList();
+        ChickenItem chickenItem = (ChickenItem) ModRegistry.CHICKEN_ITEM.get();
+        int dropCount = Math.max(1, ChickensConfigHolder.get().getDropCount());
+        List<ChickensJeiRecipeTypes.DropRecipe> recipes = new ArrayList<>();
+        for (ChickensRegistryItem chicken : ChickensRegistry.getItems()) {
+            if (!chicken.isEnabled()) continue;
+            ItemStack drop = chicken.createDropItem();
+            if (drop.isEmpty()) continue;
+            ItemStack chickenStack = chickenItem.createFor(chicken);
+            ItemStack tierDrop = drop.copy();
+            tierDrop.setCount(dropCount);
+            recipes.add(new ChickensJeiRecipeTypes.DropRecipe(chickenStack, tierDrop));
+        }
+        return recipes;
     }
 
     private static List<ChickensJeiRecipeTypes.BreedingRecipe> buildBreedingRecipes() {
-        return ChickensRegistry.getItems().stream()
-                .filter(chicken -> chicken.isEnabled() && chicken.isBreedable())
-                .map(chicken -> new ChickensJeiRecipeTypes.BreedingRecipe(
-                        ChickensSpawnEggItem.createFor(chicken.getParent1()),
-                        ChickensSpawnEggItem.createFor(chicken.getParent2()),
-                        ChickensSpawnEggItem.createFor(chicken),
-                        Math.round(ChickensRegistry.getChildChance(chicken))))
-                .toList();
+        ChickenItem chickenItem = (ChickenItem) ModRegistry.CHICKEN_ITEM.get();
+        List<ChickensJeiRecipeTypes.BreedingRecipe> recipes = new ArrayList<>();
+        for (ChickensRegistryItem chicken : ChickensRegistry.getItems()) {
+            if (!chicken.isEnabled() || !chicken.isBreedable()) {
+                continue;
+            }
+            int chance = Math.round(ChickensRegistry.getChildChance(chicken));
+            ItemStack parent1 = chickenItem.createFor(chicken.getParent1());
+            ItemStack parent2 = chickenItem.createFor(chicken.getParent2());
+            ItemStack child = chickenItem.createFor(chicken);
+            recipes.add(new ChickensJeiRecipeTypes.BreedingRecipe(parent1, parent2, child, chance));
+        }
+        return recipes;
     }
 
     private static List<ChickensJeiRecipeTypes.ThrowingRecipe> buildThrowingRecipes() {
@@ -186,15 +196,19 @@ public class ChickensJeiPlugin implements IModPlugin {
 
     private static List<ChickensJeiRecipeTypes.RoostingRecipe> buildRoostingRecipes() {
         ChickenItem chickenItem = (ChickenItem) ModRegistry.CHICKEN_ITEM.get();
-        return ChickensRegistry.getItems().stream()
-                .filter(ChickensRegistryItem::isEnabled)
-                .map(chicken -> {
-                    ItemStack stack = chickenItem.createFor(chicken);
-                    stack.setCount(16);
-                    ItemStack drop = chicken.createDropItem();
-                    return new ChickensJeiRecipeTypes.RoostingRecipe(stack, drop, stack.getCount());
-                })
-                .toList();
+        int dropCount = Math.max(1, ChickensConfigHolder.get().getDropCount());
+        List<ChickensJeiRecipeTypes.RoostingRecipe> recipes = new ArrayList<>();
+        for (ChickensRegistryItem chicken : ChickensRegistry.getItems()) {
+            if (!chicken.isEnabled()) continue;
+            ItemStack drop = chicken.createDropItem();
+            if (drop.isEmpty()) continue;
+            ItemStack chickenStack = chickenItem.createFor(chicken);
+            chickenStack.setCount(16);
+            ItemStack tierDrop = drop.copy();
+            tierDrop.setCount(dropCount);
+            recipes.add(new ChickensJeiRecipeTypes.RoostingRecipe(chickenStack, tierDrop, 16));
+        }
+        return recipes;
     }
 
     private static List<ChickensJeiRecipeTypes.IncubatorRecipe> buildIncubatorRecipes() {
@@ -335,7 +349,6 @@ public class ChickensJeiPlugin implements IModPlugin {
         if (fluid.isEmpty()) {
             return null;
         }
-        // Use the liquid egg as the displayed reagent so JEI "uses" on the egg shows the dousing recipe.
         ItemStack reagent = LiquidEggItem.createFor(entry);
         ItemStack result = ChickensSpawnEggItem.createFor(chicken);
         return new ChickensJeiRecipeTypes.AvianDousingRecipe(
@@ -381,6 +394,51 @@ public class ChickensJeiPlugin implements IModPlugin {
                 null,
                 AvianDousingMachineBlockEntity.SPECIAL_LIQUID_CAPACITY,
                 AvianDousingMachineBlockEntity.SPECIAL_ENERGY_COST);
+    }
+
+    // Recetas de teaching: libro+gallina vanilla → smart chicken, y right-click con item especial → pollo especial
+    private static List<ChickensJeiRecipeTypes.TeachingRecipe> buildTeachingRecipes() {
+        ChickensRegistryItem smartChicken = ChickensRegistry.getSmartChicken();
+        if (smartChicken == null || !smartChicken.isEnabled()) {
+            return List.of();
+        }
+        ChickenItem chickenItem = (ChickenItem) ModRegistry.CHICKEN_ITEM.get();
+        List<ChickensJeiRecipeTypes.TeachingRecipe> list = new ArrayList<>();
+
+        // Receta base: libro + gallina vanilla → smart chicken
+        list.add(new ChickensJeiRecipeTypes.TeachingRecipe(
+                new ItemStack(Items.BOOK),
+                new ItemStack(Items.CHICKEN_SPAWN_EGG),
+                chickenItem.createFor(smartChicken)));
+
+        // chickenNosto: tarta de calabaza + gallina vanilla → chickenNosto
+        ChickensRegistryItem nostoChicken = ChickensRegistry.getByEntityName("chickenNosto");
+        if (nostoChicken != null && nostoChicken.isEnabled()) {
+            list.add(new ChickensJeiRecipeTypes.TeachingRecipe(
+                    new ItemStack(Items.CAKE),
+                    new ItemStack(Items.CHICKEN_SPAWN_EGG),
+                    chickenItem.createFor(nostoChicken)));
+        }
+
+        // americanChicken: grass_block + gallina vanilla → americanChicken
+        ChickensRegistryItem americanChicken = ChickensRegistry.getByEntityName("americanChicken");
+        if (americanChicken != null && americanChicken.isEnabled()) {
+            list.add(new ChickensJeiRecipeTypes.TeachingRecipe(
+                    new ItemStack(Blocks.GRASS_BLOCK),
+                    new ItemStack(Items.CHICKEN_SPAWN_EGG),
+                    chickenItem.createFor(americanChicken)));
+        }
+
+        // dirtChicken: dirt + gallina vanilla → dirtChicken
+        ChickensRegistryItem dirtChicken = ChickensRegistry.getByEntityName("dirtChicken");
+        if (dirtChicken != null && dirtChicken.isEnabled()) {
+            list.add(new ChickensJeiRecipeTypes.TeachingRecipe(
+                    new ItemStack(Blocks.DIRT),
+                    new ItemStack(Items.CHICKEN_SPAWN_EGG),
+                    chickenItem.createFor(dirtChicken)));
+        }
+
+        return list;
     }
 
     private static List<ItemStack> buildHenhouseCatalysts() {

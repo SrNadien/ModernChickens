@@ -417,7 +417,13 @@ public final class ChickensDataLoader {
                         Optional.empty(),
                         0xff9ad7,
                         FluidType.BUCKET_VOLUME,
-                        EnumSet.of(LiquidEggRegistryItem.HazardFlag.MAGICAL))
+                        EnumSet.of(LiquidEggRegistryItem.HazardFlag.MAGICAL)),
+                new LiquidEggDefinition(15,
+                        id("industrialforegoing", "ether_gas"),
+                        Optional.empty(),
+                        0xff9ad7,
+                        FluidType.BUCKET_VOLUME,
+                        EnumSet.of(LiquidEggRegistryItem.HazardFlag.TOXIC))
         );
 
         private static ResourceLocation id(String namespace, String path) {
@@ -434,28 +440,49 @@ public final class ChickensDataLoader {
 
         Map<ChickensRegistryItem, ParentNames> parentOverrides = new HashMap<>();
         for (ChickensRegistryItem chicken : chickens) {
-            String prefix = "chicken." + chicken.getEntityName() + ".";
+            String prefix = "chicken." + chicken.getEntityName().toLowerCase(java.util.Locale.ROOT) + ".";
             boolean enabled = readBoolean(props, prefix + "enabled", chicken.isEnabled());
             chicken.setEnabled(enabled);
 
             float layCoefficient = readFloat(props, prefix + "layCoefficient", 1.0f);
             chicken.setLayCoefficient(layCoefficient);
 
-            ItemStack defaultEgg = chicken.createLayItem();
+            // Snapshot the code-defined items BEFORE reading props so stale cfg
+            // values never silently replace what the developer wrote in DefaultChickens.
+            ItemStack codeLayItem = chicken.createLayItem();
+            ItemStack codeDropItem = chicken.createDropItem();
+
             ItemStack layItem = readItemStack(props,
                     prefix + "eggItem",
                     prefix + "eggCount",
                     prefix + "eggType",
-                    defaultEgg);
-            chicken.setLayItem(layItem);
+                    codeLayItem);
+            // Only apply the cfg value if it matches the code-defined item —
+            // if someone manually edited the cfg to a different item, respect that;
+            // otherwise always trust the code.
+            if (layItem.getItem() == codeLayItem.getItem()) {
+                chicken.setLayItem(codeLayItem);
+            } else {
+                chicken.setLayItem(layItem);
+            }
 
-            ItemStack defaultDrop = chicken.createDropItem();
+            // Force the persisted default count to 64 when the key is absent so
+            // new installs get the intended stack size.  Existing configs that
+            // already have a value keep whatever was written there.
+            if (props.getProperty(prefix + "dropCount") == null) {
+                props.setProperty(prefix + "dropCount", "64");
+            }
             ItemStack dropItem = readItemStack(props,
                     prefix + "dropItem",
                     prefix + "dropCount",
                     prefix + "dropType",
-                    defaultDrop);
-            chicken.setDropItem(dropItem);
+                    codeDropItem.isEmpty() ? codeDropItem : new ItemStack(codeDropItem.getItem(), 64));
+            // Same logic: only override if the cfg item differs from code.
+            if (dropItem.getItem() == codeDropItem.getItem()) {
+                chicken.setDropItem(new ItemStack(codeDropItem.getItem(), dropItem.getCount()));
+            } else {
+                chicken.setDropItem(dropItem);
+            }
 
             String parent1 = readString(props, prefix + "parent1", chicken.getParent1() != null ? chicken.getParent1().getEntityName() : "");
             String parent2 = readString(props, prefix + "parent2", chicken.getParent2() != null ? chicken.getParent2().getEntityName() : "");
@@ -694,6 +721,8 @@ public final class ChickensDataLoader {
                 readInt(props, "general.incubatorMaxReceive", 4_000), 1);
         int incubatorEnergyCost = ensurePositive(props, "general.incubatorEnergyCost",
                 readInt(props, "general.incubatorEnergyCost", 10_000), 1);
+        int dropCount = ensurePositive(props, "general.roostDropCount",
+                readInt(props, "general.roostDropCount", 64), 1);
         return new ChickensConfigValues(spawnProbability, minBroodSize, maxBroodSize, multiplier,
                 overworldChance, netherChance, endChance, alwaysShowStats,
                 roostSpeed, breederSpeed, roosterAuraMultiplier, roosterAuraRange,
@@ -704,7 +733,8 @@ public final class ChickensDataLoader {
                 avianChemicalCapacity, avianChemicalTransfer, avianChemicalEffects,
                 liquidEggHazards,
                 fluidChickensEnabled, chemicalChickensEnabled, gasChickensEnabled, incubatorEnergyCost,
-                incubatorCapacity, incubatorMaxReceive);
+                incubatorCapacity, incubatorMaxReceive,
+                dropCount);
     }
 
     private static String readString(Properties props, String key, String defaultValue) {

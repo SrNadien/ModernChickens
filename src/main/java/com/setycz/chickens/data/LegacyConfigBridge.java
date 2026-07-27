@@ -1,6 +1,7 @@
 package com.setycz.chickens.data;
 
 import com.setycz.chickens.ChickensRegistryItem;
+import com.setycz.chickens.config.ChickensConfigHolder;
 import com.setycz.chickens.config.ChickensConfigValues;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
@@ -138,9 +139,11 @@ public final class LegacyConfigBridge {
                 writer.write(String.format(Locale.ROOT, "    B:enabled=%s%n", getBoolean(props, prefix + "enabled", true)));
                 writer.write(String.format(Locale.ROOT, "    D:layCoefficient=%s%n", getString(props, prefix + "layCoefficient", "1.0")));
                 writer.write(String.format(Locale.ROOT, "    S:spawnType=%s%n", getString(props, prefix + "spawnType", chicken.getSpawnType().name())));
-            writer.write(String.format(Locale.ROOT, "    B:allowNaturalSpawn=%s%n", getBoolean(props, prefix + "allowNaturalSpawn", chicken.hasNaturalSpawnOverride())));
-            writer.write(String.format(Locale.ROOT, "    S:parent1=%s%n", getString(props, prefix + "parent1", chicken.getParent1() != null ? chicken.getParent1().getEntityName() : "")));
-            writer.write(String.format(Locale.ROOT, "    S:parent2=%s%n", getString(props, prefix + "parent2", chicken.getParent2() != null ? chicken.getParent2().getEntityName() : "")));
+            // Always write these fields from the in-memory chicken definition so
+            // stale props from a previously deleted cfg never overwrite code changes.
+            writer.write(String.format(Locale.ROOT, "    B:allowNaturalSpawn=%s%n", chicken.hasNaturalSpawnOverride()));
+            writer.write(String.format(Locale.ROOT, "    S:parent1=%s%n", chicken.getParent1() != null ? chicken.getParent1().getEntityName() : ""));
+            writer.write(String.format(Locale.ROOT, "    S:parent2=%s%n", chicken.getParent2() != null ? chicken.getParent2().getEntityName() : ""));
             writer.write(String.format(Locale.ROOT, "    I:liquidDousingCost=%d%n", getInt(props, prefix + "liquidDousingCost", chicken.getLiquidDousingCost())));
 
             writeItemEntry(writer, props, prefix, "egg", chicken.createLayItem());
@@ -151,6 +154,70 @@ public final class LegacyConfigBridge {
         } catch (IOException ex) {
             LOGGER.warn("Failed to write legacy chickens.cfg", ex);
         }
+    }
+
+    /**
+     * Constructs a {@link ChickensConfigValues} from the given properties and
+     * immediately publishes it to {@link ChickensConfigHolder}.
+     */
+    public static void applyToHolder(Properties props) {
+        ChickensConfigValues current = ChickensConfigHolder.get();
+        ChickensConfigValues built = new ChickensConfigValues(
+                getInt(props, "general.spawnProbability",           current.getSpawnProbability()),
+                getInt(props, "general.minBroodSize",               current.getMinBroodSize()),
+                getInt(props, "general.maxBroodSize",               current.getMaxBroodSize()),
+                getFloat(props, "general.netherSpawnChanceMultiplier", current.getNetherSpawnChanceMultiplier()),
+                getFloat(props, "general.overworldSpawnChance",     current.getOverworldSpawnChance()),
+                getFloat(props, "general.netherSpawnChance",        current.getNetherSpawnChance()),
+                getFloat(props, "general.endSpawnChance",           current.getEndSpawnChance()),
+                getBool(props, "general.alwaysShowStats",           current.isAlwaysShowStats()),
+                getDouble(props, "general.roostSpeedMultiplier",    current.getRoostSpeedMultiplier()),
+                getDouble(props, "general.breederSpeedMultiplier",  current.getBreederSpeedMultiplier()),
+                getDouble(props, "general.roosterAuraMultiplier",   current.getRoosterAuraMultiplier()),
+                getInt(props, "general.roosterAuraRange",           current.getRoosterAuraRange()),
+                getInt(props, "general.nestMaxRoosters",            current.getNestMaxRoosters()),
+                getInt(props, "general.nestSeedDurationTicks",      current.getNestSeedDurationTicks()),
+                getBool(props, "general.disableVanillaEggLaying",   current.isVanillaEggLayingDisabled()),
+                getInt(props, "general.collectorScanRange",         current.getCollectorScanRange()),
+                getBool(props, "general.avianFluxEffectsEnabled",   current.isAvianFluxEffectsEnabled()),
+                getDouble(props, "general.fluxEggCapacityMultiplier", current.getFluxEggCapacityMultiplier()),
+                getInt(props, "general.avianFluxCapacity",          current.getAvianFluxCapacity()),
+                getInt(props, "general.avianFluxMaxReceive",        current.getAvianFluxMaxReceive()),
+                getInt(props, "general.avianFluxMaxExtract",        current.getAvianFluxMaxExtract()),
+                getInt(props, "general.avianFluidCapacity",         current.getAvianFluidConverterCapacity(8_000)),
+                getInt(props, "general.avianFluidTransferRate",     current.getAvianFluidConverterTransfer(2_000)),
+                getBool(props, "general.avianFluidEffectsEnabled",  current.isAvianFluidConverterEffectsEnabled()),
+                getInt(props, "general.avianChemicalCapacity",      current.getAvianChemicalConverterCapacity(8_000)),
+                getInt(props, "general.avianChemicalTransferRate",  current.getAvianChemicalConverterTransfer(2_000)),
+                getBool(props, "general.avianChemicalEffectsEnabled", current.isAvianChemicalConverterEffectsEnabled()),
+                getBool(props, "general.liquidEggHazardsEnabled",   current.isLiquidEggHazardsEnabled()),
+                getBool(props, "general.enableFluidChickens",       current.isFluidChickensEnabled()),
+                getBool(props, "general.enableChemicalChickens",    current.isChemicalChickensEnabled()),
+                getBool(props, "general.enableGasChickens",         current.isGasChickensEnabled()),
+                getInt(props, "general.incubatorEnergyCost",        current.getIncubatorEnergyCost()),
+                getInt(props, "general.incubatorCapacity",          current.getIncubatorEnergyCapacity()),
+                getInt(props, "general.incubatorMaxReceive",        current.getIncubatorEnergyMaxReceive()),
+                current.getDropCount()
+        );
+        ChickensConfigHolder.set(built);
+    }
+
+        private static float getFloat(Properties props, String key, float fallback) {
+        String value = props.getProperty(key);
+        if (value == null) return fallback;
+        try { return Float.parseFloat(value.trim()); } catch (NumberFormatException ex) { return fallback; }
+    }
+
+    private static double getDouble(Properties props, String key, double fallback) {
+        String value = props.getProperty(key);
+        if (value == null) return fallback;
+        try { return Double.parseDouble(value.trim()); } catch (NumberFormatException ex) { return fallback; }
+    }
+
+    private static boolean getBool(Properties props, String key, boolean fallback) {
+        String value = props.getProperty(key);
+        if (value == null) return fallback;
+        return Boolean.parseBoolean(value.trim());
     }
 
     private static void applyGeneralValue(Properties props, String key, String value) {
@@ -213,8 +280,18 @@ public final class LegacyConfigBridge {
         String countKey = prefix + kind + "Count";
         String metaKey = prefix + kind + "Type";
 
-        String itemId = getString(props, itemKey, getItemId(stack));
-        String count = getString(props, countKey, Integer.toString(stack.getCount()));
+        // Always derive the item id from the stack passed in — never from props —
+        // so code-defined changes (e.g. GoldChicken lay=gold_ingot) are always written.
+        String itemId = getItemId(stack);
+        // For drop entries always use the configured dropCount — never carry over
+        // stale values from the legacy file (many old configs had count=1).
+        // Egg entries read the stored value or fall back to the stack count.
+        String count;
+        if ("drop".equals(kind)) {
+            count = Integer.toString(ChickensConfigHolder.get().getDropCount());
+        } else {
+            count = getString(props, countKey, Integer.toString(stack.getCount()));
+        }
         String type = getString(props, metaKey, "0");
 
         String legacyPrefix = "egg".equals(kind) ? "lay" : "drop";
