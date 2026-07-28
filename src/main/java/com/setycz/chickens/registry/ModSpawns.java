@@ -1,6 +1,7 @@
 package com.setycz.chickens.registry;
 
 import com.setycz.chickens.entity.ChickensChicken;
+import com.setycz.chickens.entity.Rooster;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.SpawnPlacements;
 import net.neoforged.bus.api.IEventBus;
@@ -25,6 +26,11 @@ public final class ModSpawns {
                 SpawnPlacements.getPlacementType(EntityType.CHICKEN),
                 SpawnPlacements.getHeightmapType(EntityType.CHICKEN),
                 ChickensChicken::checkSpawnRules,
+                RegisterSpawnPlacementsEvent.Operation.REPLACE);
+        event.register(ModEntityTypes.ROOSTER.get(),
+                SpawnPlacements.getPlacementType(EntityType.CHICKEN),
+                SpawnPlacements.getHeightmapType(EntityType.CHICKEN),
+                Rooster::checkSpawnRules,
                 RegisterSpawnPlacementsEvent.Operation.REPLACE);
     }
 }

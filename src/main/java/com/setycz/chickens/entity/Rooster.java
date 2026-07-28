@@ -1,5 +1,6 @@
 package com.setycz.chickens.entity;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
 import net.minecraft.nbt.CompoundTag;
@@ -11,9 +12,13 @@ import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.util.Mth;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.Container;
 import net.minecraft.world.MenuProvider;
+import net.minecraft.world.entity.AgeableMob;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.MobSpawnType;
+import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.FloatGoal;
@@ -31,6 +36,8 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LevelAccessor;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.inventory.SimpleContainerData;
@@ -39,6 +46,10 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import com.setycz.chickens.registry.ModMenuTypes;
 import com.setycz.chickens.menu.RoosterMenu;
+
+import javax.annotation.Nullable;
+import java.util.EnumSet;
+import java.util.List;
 
 /**
  * Lightweight NeoForge port of Hatchery's rooster entity. This class focuses on
@@ -50,10 +61,8 @@ import com.setycz.chickens.menu.RoosterMenu;
  * abstract "seed charge" value that future AI and GUIs can consume.</li>
  * </ul>
  *
- * The more advanced mating AI and dedicated inventory GUI from Hatchery's
- * {@code EntityRooster} / {@code GuiRoosterInventory} have not been ported
- * yet. Those features will be layered on top of this skeleton once the base
- * entity is integrated and play‑tested inside ModernChickens.
+ * Roosters use their stored seed charge to fertilize nearby hens; the hen
+ * remains the sole source of the resulting chick's type and genetics.
  */
 public class Rooster extends Chicken implements Container, MenuProvider {
     private static final EntityDataAccessor<Integer> DATA_SEEDS = SynchedEntityData.defineId(Rooster.class,
@@ -89,11 +98,12 @@ public class Rooster extends Chicken implements Container, MenuProvider {
         // the stored seed charge.
         this.goalSelector.addGoal(0, new FloatGoal(this));
         this.goalSelector.addGoal(1, new PanicGoal(this, 1.4D));
-        this.goalSelector.addGoal(2, new TemptGoal(this, 1.0D, stack -> stack.is(ItemTags.CHICKEN_FOOD), false));
-        this.goalSelector.addGoal(3, new FollowParentGoal(this, 1.1D));
-        this.goalSelector.addGoal(4, new WaterAvoidingRandomStrollGoal(this, 1.0D));
-        this.goalSelector.addGoal(5, new LookAtPlayerGoal(this, Player.class, 6.0F));
-        this.goalSelector.addGoal(6, new RandomLookAroundGoal(this));
+        this.goalSelector.addGoal(2, new RoosterMateGoal(this));
+        this.goalSelector.addGoal(3, new TemptGoal(this, 1.0D, stack -> stack.is(ItemTags.CHICKEN_FOOD), false));
+        this.goalSelector.addGoal(4, new FollowParentGoal(this, 1.1D));
+        this.goalSelector.addGoal(5, new WaterAvoidingRandomStrollGoal(this, 1.0D));
+        this.goalSelector.addGoal(6, new LookAtPlayerGoal(this, Player.class, 6.0F));
+        this.goalSelector.addGoal(7, new RandomLookAroundGoal(this));
     }
 
     @Override
@@ -109,8 +119,8 @@ public class Rooster extends Chicken implements Container, MenuProvider {
     @Override
     protected void customServerAiStep() {
         super.customServerAiStep();
-        // Every few ticks, convert stored seed items into abstract "seed charge"
-        // so future mating logic has a simple integer resource to consume.
+        // Every few ticks, convert stored seed items into the charge consumed
+        // by the mating goal.
         if (this.tickCount % 5 == 0) {
             convertSeeds();
         }
@@ -182,6 +192,98 @@ public class Rooster extends Chicken implements Container, MenuProvider {
             items.set(SEED_SLOT, ItemStack.EMPTY);
         }
         setSeeds(getSeeds() + 2);
+    }
+
+    private void consumeSeeds(int amount) {
+        setSeeds(getSeeds() - amount);
+    }
+
+    public static boolean checkSpawnRules(EntityType<Rooster> type, LevelAccessor level, MobSpawnType reason,
+            BlockPos pos, RandomSource random) {
+        return Animal.checkAnimalSpawnRules(type, level, reason, pos, random);
+    }
+
+    private static final class RoosterMateGoal extends Goal {
+        private static final int SEED_COST = 2;
+        private static final double SEARCH_RANGE = 8.0D;
+
+        private final Rooster rooster;
+        @Nullable
+        private Chicken hen;
+        private boolean startedLove;
+        private int mateTime;
+
+        private RoosterMateGoal(Rooster rooster) {
+            this.rooster = rooster;
+            this.setFlags(EnumSet.of(Flag.MOVE, Flag.LOOK));
+        }
+
+        @Override
+        public boolean canUse() {
+            if (rooster.isBaby() || rooster.getSeeds() < SEED_COST) {
+                return false;
+            }
+            hen = findHen();
+            return hen != null;
+        }
+
+        @Override
+        public void start() {
+            mateTime = 0;
+            startedLove = hen != null && !hen.isInLove();
+            if (startedLove) {
+                hen.setInLove(null);
+            }
+        }
+
+        @Override
+        public boolean canContinueToUse() {
+            return hen != null && rooster.getSeeds() >= SEED_COST && hen.isAlive() && !hen.isBaby()
+                    && hen.isInLove() && !hen.isPanicking() && mateTime < 60;
+        }
+
+        @Override
+        public void tick() {
+            rooster.getLookControl().setLookAt(hen, 10.0F, rooster.getMaxHeadXRot());
+            rooster.getNavigation().moveTo(hen, 1.0D);
+            if (++mateTime >= this.adjustedTickDelay(60) && rooster.distanceToSqr(hen) < 9.0D) {
+                breed();
+            }
+        }
+
+        @Override
+        public void stop() {
+            if (startedLove && hen != null) {
+                hen.resetLove();
+            }
+            hen = null;
+            startedLove = false;
+            mateTime = 0;
+        }
+
+        @Nullable
+        private Chicken findHen() {
+            List<Chicken> chickens = rooster.level().getEntitiesOfClass(Chicken.class,
+                    rooster.getBoundingBox().inflate(SEARCH_RANGE), candidate -> candidate != rooster
+                            && !(candidate instanceof Rooster) && !candidate.isBaby() && !candidate.isPanicking()
+                            && (candidate.isInLove() || candidate.canFallInLove()));
+            return chickens.stream().min(java.util.Comparator.comparingDouble(rooster::distanceToSqr)).orElse(null);
+        }
+
+        private void breed() {
+            if (!(rooster.level() instanceof ServerLevel level) || hen == null) {
+                return;
+            }
+            AgeableMob child = hen.getBreedOffspring(level, hen);
+            if (child == null) {
+                return;
+            }
+            child.setBaby(true);
+            child.moveTo(hen.getX(), hen.getY(), hen.getZ(), 0.0F, 0.0F);
+            hen.finalizeSpawnChildFromBreeding(level, hen, child);
+            level.addFreshEntityWithPassengers(child);
+            rooster.consumeSeeds(SEED_COST);
+        }
     }
 
     @Override

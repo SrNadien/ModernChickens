@@ -668,8 +668,8 @@ public final class ChickensDataLoader {
 
     private static ChickensConfigValues readGeneralSettings(Properties props) {
         int spawnProbability = readInt(props, "general.spawnProbability", 10);
-        int minBroodSize = readInt(props, "general.minBroodSize", 3);
-        int maxBroodSize = readInt(props, "general.maxBroodSize", 5);
+        int minBroodSize = readInt(props, "general.minBroodSize", 1);
+        int maxBroodSize = readInt(props, "general.maxBroodSize", 2);
         float multiplier = readFloat(props, "general.netherSpawnChanceMultiplier", 1.0f);
         float overworldChance = clampChance(props, "general.overworldSpawnChance", readFloat(props, "general.overworldSpawnChance", 0.02f));
         float netherChance = clampChance(props, "general.netherSpawnChance", readFloat(props, "general.netherSpawnChance", 0.05f));

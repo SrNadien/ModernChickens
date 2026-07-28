@@ -31,6 +31,7 @@ public final class ChickensSpawnManager {
     private static final Logger LOGGER = LoggerFactory.getLogger("ChickensSpawns");
     private static final float SNOW_WEIGHT_MODIFIER = 0.75F;
     private static final float END_WEIGHT_MODIFIER = 0.5F;
+    private static final float MODERN_CHICKEN_WEIGHT_MODIFIER = 0.25F;
     private static final double OVERWORLD_CHARGE = 0.12D;
     private static final double OVERWORLD_ENERGY = 0.32D;
     private static final double NETHER_CHARGE = 0.18D;
@@ -113,7 +114,9 @@ public final class ChickensSpawnManager {
     }
 
     private static int computeSpawnWeight(SpawnType type, ChickensConfigValues config) {
-        int weight = Math.max(0, config.getSpawnProbability());
+        // Vanilla entries remain untouched for modpack compatibility, so Modern
+        // Chickens deliberately occupy the smaller share of those biome pools.
+        int weight = Math.round(Math.max(0, config.getSpawnProbability()) * MODERN_CHICKEN_WEIGHT_MODIFIER);
         if (type == SpawnType.HELL) {
             weight = Math.round(weight * config.getNetherSpawnChanceMultiplier());
         } else if (type == SpawnType.SNOW) {

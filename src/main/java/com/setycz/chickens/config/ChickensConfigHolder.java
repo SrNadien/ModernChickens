@@ -10,7 +10,7 @@ public final class ChickensConfigHolder {
     // Default values mirror the legacy configuration while introducing sensible
     // baselines for the new rooster nest and incubator options.
     private static volatile ChickensConfigValues values = new ChickensConfigValues(
-            10, 3, 5,                // spawnProbability, minBroodSize, maxBroodSize
+            10, 1, 2,                // spawnProbability, minBroodSize, maxBroodSize
             1.0f, 0.02f, 0.05f, 0.015f, // netherSpawnChanceMultiplier, overworld, nether, end
             false,                   // alwaysShowStats
             1.0D,                    // roostSpeedMultiplier

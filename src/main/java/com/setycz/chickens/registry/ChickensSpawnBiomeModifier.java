@@ -3,6 +3,9 @@ package com.setycz.chickens.registry;
 import com.mojang.serialization.MapCodec;
 import com.setycz.chickens.spawn.ChickensSpawnManager;
 import com.setycz.chickens.spawn.ChickensSpawnManager.SpawnPlan;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.MobCategory;
+import net.minecraft.world.level.biome.MobSpawnSettings;
 import net.minecraft.core.Holder;
 import net.minecraft.world.level.biome.Biome;
 import net.neoforged.neoforge.common.world.BiomeModifier;
@@ -25,12 +28,22 @@ public final class ChickensSpawnBiomeModifier implements BiomeModifier {
         if (phase != Phase.ADD) {
             return;
         }
+        if (!hasVanillaChickenSpawn(builder)) {
+            return;
+        }
         ChickensSpawnManager.planFor(biome).ifPresent(plan -> addSpawn(builder, plan));
     }
 
     private static void addSpawn(ModifiableBiomeInfo.BiomeInfo.Builder builder, SpawnPlan plan) {
         builder.getMobSpawnSettings().addSpawn(plan.category(), plan.spawnerData());
         builder.getMobSpawnSettings().addMobCharge(plan.spawnerData().type, plan.spawnCharge(), plan.energyBudget());
+        builder.getMobSpawnSettings().addSpawn(MobCategory.CREATURE,
+                new MobSpawnSettings.SpawnerData(ModEntityTypes.ROOSTER.get(), 1, 1, 1));
+    }
+
+    private static boolean hasVanillaChickenSpawn(ModifiableBiomeInfo.BiomeInfo.Builder builder) {
+        return builder.getMobSpawnSettings().getSpawner(MobCategory.CREATURE).stream()
+                .anyMatch(spawn -> spawn.type == EntityType.CHICKEN);
     }
 
     @Override
