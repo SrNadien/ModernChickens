@@ -1,7 +1,6 @@
 package com.setycz.chickens.blockentity;
 
 import com.setycz.chickens.ChickensRegistryItem;
-import com.setycz.chickens.config.ChickensConfigHolder;
 import com.setycz.chickens.item.ChickenItemHelper;
 import com.setycz.chickens.item.ChickenStats;
 import net.minecraft.core.BlockPos;
@@ -57,15 +56,11 @@ public abstract class AbstractChickenContainerBlockEntity extends BlockEntity im
         }
 
         public ItemStack createDrop(RandomSource random) {
-            ItemStack drop = chicken.createDropItem();
-            drop.setCount(ChickensConfigHolder.get().getDropCount());
-            return drop;
+            return chicken.createDropItem();
         }
 
         public ItemStack createLay(RandomSource random) {
-            ItemStack lay = chicken.createLayItem();
-            lay.setCount(ChickensConfigHolder.get().getDropCount());
-            return lay;
+            return chicken.createLayItem();
         }
 
 

@@ -49,6 +49,10 @@ Modern Chickens is a NeoForge port of the classic Chickens and Roost mods for Mi
 - **Actually Additions** — Black Quartz, Restonia, Diamatine, Emeradic, Enori, Palis, Void crystals.
 - **Vanilla** — Amethyst (Amethyst Shard), Nether Stars, Dragon Eggs
 
+## Henhouse
+
+The Henhouse collects nearby chicken drops into its internal inventory. It accepts hay bales or FE from any standard energy provider; each unit of charge collects one item, and spent hay becomes dirt. Outputs can be extracted from below by normal item automation.
+
 ## Boss Chickens via Avian Dousing (Dragon / Wither)
 You cannot breed these; you must infuse them in the **Avian Dousing Machine**.
 

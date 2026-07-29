@@ -1,16 +1,17 @@
 {
-  "_comment": "Add entries to the chickens array. Copy the sample block from _example to get started.",
+  "_comment": "lay_item.count is produced by live chickens and Roosts; drop_item.count is used on death. Counts are capped at the item stack limit (Cake and Flux Eggs must be 1). Parents are case-insensitive. Check the startup log or run /chickens custom list after loading.",
   "chickens": [
     {
       "name": "Whipped Cream Chicken",
       "texture": "chickens:textures/entity/gunpowderchicken.png",
       "item_texture": "chickens:textures/item/chicken/gunpowderchicken.png",
       "lay_item": {
-        "item": "minecraft:cake"
+        "item": "minecraft:cake",
+        "count": 1
       },
       "drop_item": {
         "item": "minecraft:cake",
-        "count": 2
+        "count": 1
       },
       "background_color": "#ad2cdb",
       "foreground_color": "#0bd1e3",
@@ -28,11 +29,12 @@
       "name": "Booger Chicken",
       "item_texture": "chickens:textures/item/chicken/slimechicken.png",
       "lay_item": {
-        "item": "minecraft:cake"
+        "item": "minecraft:cake",
+        "count": 1
       },
       "drop_item": {
         "item": "minecraft:cake",
-        "count": 2
+        "count": 1
       },
       "background_color": "#195e2c",
       "foreground_color": "#15291a",
@@ -51,11 +53,12 @@
       "texture": "chickens:textures/entity/glasschicken.png",
       "item_texture": "chickens:textures/item/chicken/glasschicken.png",
       "lay_item": {
-        "item": "minecraft:cake"
+        "item": "minecraft:cake",
+        "count": 1
       },
       "drop_item": {
         "item": "minecraft:cake",
-        "count": 2
+        "count": 1
       },
       "background_color": "#1c632f",
       "foreground_color": "#b86c2e",
@@ -76,7 +79,8 @@
       "texture": "chickens:textures/entity/CopperChicken.png",
       "item_texture": "chickens:textures/item/chicken/copperchicken.png",
       "lay_item": {
-        "item": "minecraft:copper_ingot"
+        "item": "minecraft:copper_ingot",
+        "count": 4
       },
       "drop_item": {
         "item": "minecraft:copper_ingot",

@@ -24,7 +24,7 @@ final class HenhouseProvider implements IDataProvider<HenhouseBlockEntity> {
             return;
         }
         HudOverlayHelper helper = new HudOverlayHelper();
-        helper.addEnergy(blockEntity.getEnergy(), HenhouseBlockEntity.HAY_BALE_ENERGY * HenhouseBlockEntity.SLOT_COUNT);
+        helper.addEnergy(blockEntity.getEnergy(), HenhouseBlockEntity.ENERGY_CAPACITY);
         ItemStack hayStack = blockEntity.getItem(HenhouseBlockEntity.HAY_SLOT);
         int hayCount = isHayFuel(hayStack) ? hayStack.getCount() : 0;
         if (hayCount > 0) {

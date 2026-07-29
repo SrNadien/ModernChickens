@@ -31,6 +31,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import net.neoforged.neoforge.common.Tags;
+import net.neoforged.neoforge.energy.IEnergyStorage;
 import net.minecraft.world.level.block.Block;
 
 /**
@@ -46,6 +47,7 @@ public class HenhouseBlockEntity extends BlockEntity implements WorldlyContainer
     public static final int SLOT_COUNT = LAST_OUTPUT_SLOT + 1;
 
     public static final int HAY_BALE_ENERGY = 100;
+    public static final int ENERGY_CAPACITY = HAY_BALE_ENERGY * 64;
     private static final double HENHOUSE_RADIUS = 0.5D;
     private static final double FENCE_THRESHOLD = 0.5D;
     private static final double MAX_ENTITY_RADIUS = 2.0D;
@@ -76,7 +78,7 @@ public class HenhouseBlockEntity extends BlockEntity implements WorldlyContainer
         @Override
         public void set(int index, int value) {
             if (index == 0) {
-                energy = value;
+                energy = Mth.clamp(value, 0, ENERGY_CAPACITY);
             }
         }
 
@@ -87,6 +89,42 @@ public class HenhouseBlockEntity extends BlockEntity implements WorldlyContainer
     };
 
     private int energy;
+    private final IEnergyStorage energyStorage = new IEnergyStorage() {
+        @Override
+        public int receiveEnergy(int amount, boolean simulate) {
+            int received = Math.min(Math.max(amount, 0), ENERGY_CAPACITY - energy);
+            if (received > 0 && !simulate) {
+                energy += received;
+                sync();
+            }
+            return received;
+        }
+
+        @Override
+        public int extractEnergy(int amount, boolean simulate) {
+            return 0;
+        }
+
+        @Override
+        public int getEnergyStored() {
+            return energy;
+        }
+
+        @Override
+        public int getMaxEnergyStored() {
+            return ENERGY_CAPACITY;
+        }
+
+        @Override
+        public boolean canExtract() {
+            return false;
+        }
+
+        @Override
+        public boolean canReceive() {
+            return true;
+        }
+    };
     @Nullable
     private Component customName;
 
@@ -260,7 +298,7 @@ public class HenhouseBlockEntity extends BlockEntity implements WorldlyContainer
         if (hayStack.isEmpty()) {
             items.set(HAY_SLOT, ItemStack.EMPTY);
         }
-        energy += HAY_BALE_ENERGY;
+        energy = Math.min(energy + HAY_BALE_ENERGY, ENERGY_CAPACITY);
         return true;
     }
 
@@ -326,7 +364,7 @@ public class HenhouseBlockEntity extends BlockEntity implements WorldlyContainer
     @Override
     protected void loadAdditional(CompoundTag tag, HolderLookup.Provider provider) {
         ContainerHelper.loadAllItems(tag, items, provider);
-        energy = tag.getInt("Energy");
+        energy = Mth.clamp(tag.getInt("Energy"), 0, ENERGY_CAPACITY);
         customName = null;
         if (tag.contains("CustomName")) {
             ComponentSerialization.CODEC.parse(provider.createSerializationContext(NbtOps.INSTANCE), tag.get("CustomName"))
@@ -470,5 +508,9 @@ public class HenhouseBlockEntity extends BlockEntity implements WorldlyContainer
 
     public int getEnergy() {
         return energy;
+    }
+
+    public IEnergyStorage getEnergyStorage(@Nullable Direction direction) {
+        return energyStorage;
     }
 }

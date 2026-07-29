@@ -149,16 +149,13 @@ public class ChickensJeiPlugin implements IModPlugin {
 
     private static List<ChickensJeiRecipeTypes.DropRecipe> buildDropRecipes() {
         ChickenItem chickenItem = (ChickenItem) ModRegistry.CHICKEN_ITEM.get();
-        int dropCount = Math.max(1, ChickensConfigHolder.get().getDropCount());
         List<ChickensJeiRecipeTypes.DropRecipe> recipes = new ArrayList<>();
         for (ChickensRegistryItem chicken : ChickensRegistry.getItems()) {
             if (!chicken.isEnabled()) continue;
             ItemStack drop = chicken.createDropItem();
             if (drop.isEmpty()) continue;
             ItemStack chickenStack = chickenItem.createFor(chicken);
-            ItemStack tierDrop = drop.copy();
-            tierDrop.setCount(dropCount);
-            recipes.add(new ChickensJeiRecipeTypes.DropRecipe(chickenStack, tierDrop));
+            recipes.add(new ChickensJeiRecipeTypes.DropRecipe(chickenStack, drop));
         }
         return recipes;
     }
@@ -196,17 +193,14 @@ public class ChickensJeiPlugin implements IModPlugin {
 
     private static List<ChickensJeiRecipeTypes.RoostingRecipe> buildRoostingRecipes() {
         ChickenItem chickenItem = (ChickenItem) ModRegistry.CHICKEN_ITEM.get();
-        int dropCount = Math.max(1, ChickensConfigHolder.get().getDropCount());
         List<ChickensJeiRecipeTypes.RoostingRecipe> recipes = new ArrayList<>();
         for (ChickensRegistryItem chicken : ChickensRegistry.getItems()) {
             if (!chicken.isEnabled()) continue;
-            ItemStack drop = chicken.createDropItem();
-            if (drop.isEmpty()) continue;
+            ItemStack lay = chicken.createLayItem();
+            if (lay.isEmpty()) continue;
             ItemStack chickenStack = chickenItem.createFor(chicken);
             chickenStack.setCount(16);
-            ItemStack tierDrop = drop.copy();
-            tierDrop.setCount(dropCount);
-            recipes.add(new ChickensJeiRecipeTypes.RoostingRecipe(chickenStack, tierDrop, 16));
+            recipes.add(new ChickensJeiRecipeTypes.RoostingRecipe(chickenStack, lay, 16));
         }
         return recipes;
     }

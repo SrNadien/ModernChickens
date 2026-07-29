@@ -76,6 +76,7 @@ public class AvianDousingMachineBlockEntity extends BlockEntity implements World
     public static final int ENERGY_CAPACITY = 1_000_000;
     public static final int ENERGY_MAX_RECEIVE = 20_000;
     public static final int MAX_PROGRESS = 200;
+    private static final int TRANSFER_RATE = FluidType.BUCKET_VOLUME * 2;
 
     @Deprecated // use per-chicken configurable value via ChickensRegistryItem#getLiquidDousingCost()
     public static final int LIQUID_COST = FluidType.BUCKET_VOLUME * 10;
@@ -145,6 +146,8 @@ public class AvianDousingMachineBlockEntity extends BlockEntity implements World
         }
 
         boolean inventoryChanged = false;
+        boolean pulledFluid = pullFluidFromNeighbors(level);
+        boolean pulledChemical = pullChemicalFromNeighbors(level);
         boolean pulledEnergy = pullEnergyFromNeighbors(level);
         OperationPlan plan = choosePlan();
         mode = plan.mode();
@@ -172,8 +175,8 @@ public class AvianDousingMachineBlockEntity extends BlockEntity implements World
             progress = Math.max(progress - 2, 0);
         }
 
-        updateActiveState(level, progress > 0 || pulledEnergy);
-        if (inventoryChanged || canAdvance || pulledEnergy) {
+        updateActiveState(level, progress > 0 || pulledFluid || pulledChemical || pulledEnergy);
+        if (inventoryChanged || canAdvance || pulledFluid || pulledChemical || pulledEnergy) {
             setChanged();
         }
     }
@@ -383,6 +386,52 @@ public class AvianDousingMachineBlockEntity extends BlockEntity implements World
             changed = true;
         }
         return changed;
+    }
+
+    private boolean pullFluidFromNeighbors(Level level) {
+        if (liquidTank.getFluidAmount() >= LIQUID_CAPACITY || specialInfusion != SpecialInfusion.NONE) {
+            return false;
+        }
+        for (Direction direction : Direction.values()) {
+            IFluidHandler neighbor = level.getCapability(Capabilities.FluidHandler.BLOCK,
+                    worldPosition.relative(direction), direction.getOpposite());
+            if (neighbor == null) {
+                continue;
+            }
+            FluidStack available = neighbor.drain(Math.min(TRANSFER_RATE, LIQUID_CAPACITY - liquidTank.getFluidAmount()),
+                    IFluidHandler.FluidAction.SIMULATE);
+            int accepted = liquidTank.fill(available, IFluidHandler.FluidAction.SIMULATE);
+            if (accepted <= 0) {
+                continue;
+            }
+            FluidStack drained = neighbor.drain(accepted, IFluidHandler.FluidAction.EXECUTE);
+            return liquidTank.fill(drained, IFluidHandler.FluidAction.EXECUTE) > 0;
+        }
+        return false;
+    }
+
+    private boolean pullChemicalFromNeighbors(Level level) {
+        if (!MekanismChemicalHelper.isChemicalCapabilityAvailable() || chemicalAmount >= CHEMICAL_CAPACITY) {
+            return false;
+        }
+        for (Direction direction : Direction.values()) {
+            Object neighbor = MekanismChemicalHelper.getBlockChemicalHandler(level, worldPosition.relative(direction),
+                    direction.getOpposite());
+            Object available = MekanismChemicalHelper.extractChemical(neighbor,
+                    Math.min((long) TRANSFER_RATE, CHEMICAL_CAPACITY - chemicalAmount), true);
+            if (MekanismChemicalHelper.isStackEmpty(available) || !isTemplateValid(available)) {
+                continue;
+            }
+            Object remainder = insertStack(available, MekanismChemicalHelper.getAction(false));
+            long accepted = MekanismChemicalHelper.getStackAmount(available) - MekanismChemicalHelper.getStackAmount(remainder);
+            if (accepted <= 0) {
+                continue;
+            }
+            Object drained = MekanismChemicalHelper.extractChemical(neighbor, accepted, false);
+            return !MekanismChemicalHelper.isStackEmpty(drained)
+                    && MekanismChemicalHelper.isStackEmpty(insertStack(drained, MekanismChemicalHelper.getAction(true)));
+        }
+        return false;
     }
 
     private void markChemicalDirty() {

@@ -55,6 +55,9 @@ public final class ChickensCommands {
                                 .executes(ctx -> exportBreedingGraph(ctx.getSource()))))
                 .then(Commands.literal("kill")
                         .executes(ctx -> killAllChickens(ctx.getSource())))
+                .then(Commands.literal("custom")
+                        .then(Commands.literal("list")
+                                .executes(ctx -> listCustomChickens(ctx.getSource()))))
                 .then(Commands.literal("spawn")
                         .then(Commands.literal("multiplier")
                         .then(Commands.argument("value", FloatArgumentType.floatArg(0.0F, 1000.0F))
@@ -83,6 +86,19 @@ public final class ChickensCommands {
                                                                         IntegerArgumentType.getInteger(ctx, "strength"),
                                                                         IntegerArgumentType.getInteger(ctx, "amount")))))))));
         event.getDispatcher().register(root);
+    }
+
+    private static int listCustomChickens(CommandSourceStack source) {
+        var custom = ChickensRegistry.getItems().stream().filter(ChickensRegistryItem::isCustom).toList();
+        if (custom.isEmpty()) {
+            source.sendSuccess(() -> Component.literal("No custom chickens are loaded."), false);
+            return 0;
+        }
+        source.sendSuccess(() -> Component.literal("Loaded custom chickens: " + custom.size()), false);
+        for (ChickensRegistryItem chicken : custom) {
+            source.sendSuccess(() -> Component.literal(chicken.getId() + ": " + chicken.getEntityName()), false);
+        }
+        return custom.size();
     }
 
     // ---------------------------------------------------------------------------

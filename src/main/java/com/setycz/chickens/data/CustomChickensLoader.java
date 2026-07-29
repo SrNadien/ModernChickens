@@ -33,6 +33,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeMap;
 
 /**
  * Loads the optional JSON configuration that allows players to define their
@@ -58,6 +59,7 @@ public final class CustomChickensLoader {
 
         Path configFile = FMLPaths.CONFIGDIR.get().resolve(CONFIG_FILE);
         ensureTemplateExists(configFile);
+        LOGGER.info("Loading custom chickens from {}", configFile.toAbsolutePath());
 
         if (!Files.exists(configFile)) {
             return;
@@ -68,7 +70,7 @@ public final class CustomChickensLoader {
             return;
         }
 
-        Map<String, ChickensRegistryItem> byName = new HashMap<>();
+        Map<String, ChickensRegistryItem> byName = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
         Set<Integer> usedIds = new HashSet<>();
         int nextId = 0;
         for (ChickensRegistryItem chicken : chickens) {
@@ -78,6 +80,7 @@ public final class CustomChickensLoader {
         }
 
         Map<ChickensRegistryItem, ParentNames> parentsToResolve = new HashMap<>();
+        int loaded = 0;
         for (CustomChickenDefinition definition : config.chickens()) {
             try {
                 Optional<CreatedChicken> created = createChicken(definition, byName, usedIds, nextId + 1);
@@ -92,6 +95,7 @@ public final class CustomChickensLoader {
                 usedIds.add(chicken.getId());
                 nextId = Math.max(nextId, chicken.getId());
                 parentsToResolve.put(chicken, data.parents());
+                loaded++;
             } catch (IllegalArgumentException ex) {
                 LOGGER.warn("Skipping custom chicken due to invalid data: {}", ex.getMessage());
             }
@@ -113,6 +117,8 @@ public final class CustomChickensLoader {
                 chicken.setNoParents();
             }
         }
+        LOGGER.info("Loaded {} custom chickens from {} ({} rejected)", loaded, configFile.toAbsolutePath(),
+                config.chickens().size() - loaded);
     }
 
     private static Optional<CreatedChicken> createChicken(CustomChickenDefinition definition,
@@ -239,12 +245,18 @@ public final class CustomChickensLoader {
             return ItemStack.EMPTY;
         }
         Item item = BuiltInRegistries.ITEM.get(id);
-        if (item == null) {
+        if (item == null || item == net.minecraft.world.item.Items.AIR) {
             LOGGER.warn("Custom chicken '{}' references unknown item '{}'", name, definition.item());
             return ItemStack.EMPTY;
         }
 
         int count = Math.max(definition.count() != null ? definition.count() : 1, 1);
+        int maxStackSize = new ItemStack(item).getMaxStackSize();
+        if (count > maxStackSize) {
+            LOGGER.warn("Custom chicken '{}' {} count {} exceeds its stack limit {}; using {}", name, key, count,
+                    maxStackSize, maxStackSize);
+            count = maxStackSize;
+        }
         ItemStack stack = new ItemStack(item, count);
         if (stack.is(ModRegistry.LIQUID_EGG.get()) && definition.type() != null) {
             int type = Math.max(definition.type(), 0);
@@ -443,4 +455,3 @@ public final class CustomChickensLoader {
             @SerializedName("type") @Nullable Integer type) {
     }
 }
-

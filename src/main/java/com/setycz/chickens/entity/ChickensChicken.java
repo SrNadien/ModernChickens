@@ -451,7 +451,7 @@ public class ChickensChicken extends Chicken {
         if (description != null) {
             ItemStack drop = description.createDropItem();
             imprintFluxEggCharge(drop);
-            drop.setCount(1 + this.random.nextInt(1 + this.getLooting(level, source)));
+            drop.grow(this.random.nextInt(1 + this.getLooting(level, source)));
             this.spawnAtLocation(drop, 0.0F);
         }
         if (this.isOnFire()) {

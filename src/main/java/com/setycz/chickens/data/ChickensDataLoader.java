@@ -461,25 +461,23 @@ public final class ChickensDataLoader {
             // if someone manually edited the cfg to a different item, respect that;
             // otherwise always trust the code.
             if (layItem.getItem() == codeLayItem.getItem()) {
-                chicken.setLayItem(codeLayItem);
+                ItemStack configuredLayItem = codeLayItem.copy();
+                configuredLayItem.setCount(layItem.getCount());
+                chicken.setLayItem(configuredLayItem);
             } else {
                 chicken.setLayItem(layItem);
             }
 
-            // Force the persisted default count to 64 when the key is absent so
-            // new installs get the intended stack size.  Existing configs that
-            // already have a value keep whatever was written there.
-            if (props.getProperty(prefix + "dropCount") == null) {
-                props.setProperty(prefix + "dropCount", "64");
-            }
             ItemStack dropItem = readItemStack(props,
                     prefix + "dropItem",
                     prefix + "dropCount",
                     prefix + "dropType",
-                    codeDropItem.isEmpty() ? codeDropItem : new ItemStack(codeDropItem.getItem(), 64));
+                    codeDropItem);
             // Same logic: only override if the cfg item differs from code.
             if (dropItem.getItem() == codeDropItem.getItem()) {
-                chicken.setDropItem(new ItemStack(codeDropItem.getItem(), dropItem.getCount()));
+                ItemStack configuredDropItem = codeDropItem.copy();
+                configuredDropItem.setCount(dropItem.getCount());
+                chicken.setDropItem(configuredDropItem);
             } else {
                 chicken.setDropItem(dropItem);
             }
@@ -549,6 +547,13 @@ public final class ChickensDataLoader {
                 props.setProperty(typeKey, Integer.toString(readDefaultType(fallback)));
             }
             return fallback.copy();
+        }
+
+        int maxStackSize = stack.getMaxStackSize();
+        if (stack.getCount() > maxStackSize) {
+            LOGGER.warn("Configured {} count {} exceeds its stack limit {}; using {}", itemId, stack.getCount(), maxStackSize,
+                    maxStackSize);
+            stack.setCount(maxStackSize);
         }
 
         if (requiresChickenType(stack)) {

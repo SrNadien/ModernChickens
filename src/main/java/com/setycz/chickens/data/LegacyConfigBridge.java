@@ -283,15 +283,7 @@ public final class LegacyConfigBridge {
         // Always derive the item id from the stack passed in — never from props —
         // so code-defined changes (e.g. GoldChicken lay=gold_ingot) are always written.
         String itemId = getItemId(stack);
-        // For drop entries always use the configured dropCount — never carry over
-        // stale values from the legacy file (many old configs had count=1).
-        // Egg entries read the stored value or fall back to the stack count.
-        String count;
-        if ("drop".equals(kind)) {
-            count = Integer.toString(ChickensConfigHolder.get().getDropCount());
-        } else {
-            count = getString(props, countKey, Integer.toString(stack.getCount()));
-        }
+        String count = Integer.toString(stack.getCount());
         String type = getString(props, metaKey, "0");
 
         String legacyPrefix = "egg".equals(kind) ? "lay" : "drop";

@@ -54,6 +54,10 @@ public final class ModCapabilities {
                 ModBlockEntities.INCUBATOR.get(),
                 (blockEntity, direction) -> blockEntity.getEnergyStorage(direction));
         event.registerBlockEntity(
+                Capabilities.EnergyStorage.BLOCK,
+                ModBlockEntities.HENHOUSE.get(),
+                (blockEntity, direction) -> blockEntity.getEnergyStorage(direction));
+        event.registerBlockEntity(
                 Capabilities.FluidHandler.BLOCK,
                 ModBlockEntities.AVIAN_FLUID_CONVERTER.get(),
                 (blockEntity, direction) -> blockEntity.getFluidTank(direction));
