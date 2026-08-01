@@ -5,6 +5,7 @@ on:
     branches:
       - "main"
       - "Neo/1.21.1"
+      - "Neo/240"
 
 jobs:
   build:
