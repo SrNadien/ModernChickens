@@ -174,7 +174,6 @@ repositories {
 
 dependencies {
     // JEI
-    // implementation "mezz.jei:jei-${project.minecraft_version}-neoforge:${project.jei_version}"
     compileOnly "mezz.jei:jei-${minecraft_version}-common-api:${jei_version}"
     compileOnly "mezz.jei:jei-${minecraft_version}-neoforge-api:${jei_version}"
     runtimeOnly "mezz.jei:jei-${minecraft_version}-neoforge:${jei_version}"
@@ -186,7 +185,7 @@ dependencies {
     compileOnly "maven.modrinth:jade:${project.jade_version}"
     
     // AlmostUnified 
-   implementation "curse.maven:almost-unified-633823:${au_version}"
+   implementation "com.almostreliable.mods:almostunified-neoforge:${au_version}"
 
    //ultimate foods 
    implementation "curse.maven:ultimate-foods-1455067:${ultimatefoods_version}"
